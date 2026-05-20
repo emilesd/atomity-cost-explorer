@@ -1,0 +1,159 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────────
+   Design Tokens — Light theme (default)
+   ────────────────────────────────────────────── */
+:root {
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-bg-tertiary: #f3f4f6;
+  --color-bg-card: #ffffff;
+
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+
+  --color-accent-mint: #86efac;
+  --color-accent-mint-light: #dcfce7;
+  --color-accent-mint-dark: #22c55e;
+  --color-accent-success: #10b981;
+  --color-accent-error: #ef4444;
+  --color-accent-warning: #f59e0b;
+
+  --color-border: #e5e7eb;
+  --color-border-light: #f3f4f6;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.08),
+    0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08),
+    0 4px 6px -4px rgb(0 0 0 / 0.04);
+}
+
+/* ──────────────────────────────────────────────
+   Design Tokens — Dark theme
+   ────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg-primary: #0f1117;
+  --color-bg-secondary: #1a1d27;
+  --color-bg-tertiary: #252835;
+  --color-bg-card: #1a1d27;
+
+  --color-text-primary: #f9fafb;
+  --color-text-secondary: #9ca3af;
+  --color-text-tertiary: #6b7280;
+
+  --color-accent-mint: #6ee7b7;
+  --color-accent-mint-light: #064e3b;
+  --color-accent-mint-dark: #34d399;
+
+  --color-border: #374151;
+  --color-border-light: #1f2937;
+
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4),
+    0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.4),
+    0 4px 6px -4px rgb(0 0 0 / 0.3);
+}
+
+/* ──────────────────────────────────────────────
+   Tailwind v4 Theme Mapping
+   ────────────────────────────────────────────── */
+@theme inline {
+  --color-background: var(--color-bg-primary);
+  --color-foreground: var(--color-text-primary);
+  --color-surface: var(--color-bg-secondary);
+  --color-surface-alt: var(--color-bg-tertiary);
+  --color-card: var(--color-bg-card);
+  --color-muted: var(--color-text-secondary);
+  --color-subtle: var(--color-text-tertiary);
+  --color-mint: var(--color-accent-mint);
+  --color-mint-light: var(--color-accent-mint-light);
+  --color-mint-dark: var(--color-accent-mint-dark);
+  --color-success: var(--color-accent-success);
+  --color-error: var(--color-accent-error);
+  --color-warning: var(--color-accent-warning);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ──────────────────────────────────────────────
+   Accessibility — prefers-reduced-motion
+   ────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Modern CSS — Container Queries
+   Component-level responsiveness for cost bars
+   ────────────────────────────────────────────── */
+.cost-bar-container {
+  container-type: inline-size;
+  container-name: cost-bar;
+}
+
+@container cost-bar (max-width: 120px) {
+  .cost-bar-label {
+    font-size: clamp(0.5rem, 2cqi, 0.7rem);
+  }
+  .cost-bar-value {
+    display: none;
+  }
+}
+
+@container cost-bar (min-width: 121px) and (max-width: 200px) {
+  .cost-bar-label {
+    font-size: clamp(0.65rem, 2.5cqi, 0.8rem);
+  }
+  .cost-bar-value {
+    font-size: clamp(0.7rem, 3cqi, 0.875rem);
+  }
+}
+
+@container cost-bar (min-width: 201px) {
+  .cost-bar-label {
+    font-size: clamp(0.75rem, 3cqi, 0.9rem);
+  }
+  .cost-bar-value {
+    font-size: clamp(0.875rem, 3.5cqi, 1.125rem);
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Modern CSS — :has() for parent-aware styling
+   CSS Nesting for clean organization
+   ────────────────────────────────────────────── */
+.cost-card {
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--color-accent-mint-dark);
+    outline-offset: 2px;
+  }
+
+  &:has(button:hover) {
+    box-shadow: var(--shadow-md);
+  }
+}
+
+/* ──────────────────────────────────────────────
+   Base Styles
+   ────────────────────────────────────────────── */
+body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
