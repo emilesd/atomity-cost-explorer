@@ -16,7 +16,7 @@ export function CostBarChart({ nodes, level, onSelect }: CostBarChartProps) {
 
   return (
     <div
-      className="relative rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-card p-6"
+      className="relative overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-card p-4 sm:p-6"
       style={{ boxShadow: "var(--shadow-sm)" }}
       role="img"
       aria-label={`Cost comparison chart showing ${nodes.length} ${level}s`}
@@ -24,9 +24,10 @@ export function CostBarChart({ nodes, level, onSelect }: CostBarChartProps) {
       <AnimatePresence mode="wait">
         <motion.div
           key={`chart-${level}-${nodes.map((n) => n.id).join(",")}`}
-          className="grid items-end gap-4"
+          className="grid items-end gap-3 sm:gap-4"
           style={{
-            gridTemplateColumns: `repeat(${nodes.length}, minmax(60px, 1fr))`,
+            gridTemplateColumns: `repeat(${nodes.length}, minmax(${nodes.length > 4 ? "70px" : "80px"}, 1fr))`,
+            minInlineSize: nodes.length > 3 ? `${nodes.length * 90}px` : undefined,
           }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

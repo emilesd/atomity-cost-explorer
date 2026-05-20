@@ -22,7 +22,7 @@ export function CostBar({
 
   return (
     <motion.div
-      className="cost-bar-container flex flex-col items-center gap-3"
+      className="cost-bar-container flex flex-col items-center gap-2 sm:gap-3"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.85, y: 10 }}
@@ -36,7 +36,7 @@ export function CostBar({
     >
       <div
         className="relative flex w-full items-end"
-        style={{ height: "200px" }}
+        style={{ height: "clamp(120px, 20vw, 200px)" }}
       >
         <motion.button
           onClick={() => isInteractive && onSelect(node)}
@@ -44,7 +44,7 @@ export function CostBar({
           className="cost-card group relative w-full rounded-[var(--radius-lg)] bg-mint transition-all focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2 disabled:cursor-default"
           style={{
             height: `${heightPercent}%`,
-            minHeight: "40px",
+            minHeight: "32px",
             transformOrigin: "bottom",
           }}
           initial={{ scaleY: 0 }}

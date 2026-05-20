@@ -1,9 +1,11 @@
 import { CostExplorer } from "@/components/CostExplorer";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   return (
-    <div className="flex min-h-dvh flex-col">
-      {/* Hero — gives scroll distance so the section triggers on scroll */}
+    <div className="flex min-h-dvh flex-col bg-background">
+      <ThemeToggle />
+
       <header className="flex flex-col items-center justify-center gap-4 px-4 py-24 text-center sm:py-32">
         <span className="rounded-full bg-mint-light px-3 py-1 text-xs font-semibold text-mint-dark">
           Cloud Optimization Platform
@@ -25,12 +27,10 @@ export default function Home() {
         </p>
       </header>
 
-      {/* Main feature section — scroll-triggered */}
       <main>
         <CostExplorer />
       </main>
 
-      {/* Footer */}
       <footer className="mt-auto border-t border-[var(--color-border-light)] px-4 py-8 text-center text-sm text-subtle">
         Atomity Cloud Cost Explorer — Frontend Challenge
       </footer>
