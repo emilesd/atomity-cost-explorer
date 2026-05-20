@@ -146,7 +146,7 @@ export function CostBarChart({
       <div className="relative overflow-x-auto">
         <div
           ref={gridRef}
-          className="grid items-end gap-3 sm:gap-4"
+          className="cost-bar-grid grid items-end gap-3 sm:gap-4"
           style={{
             gridTemplateColumns: `repeat(${nodes.length}, minmax(60px, 1fr))`,
             minInlineSize:

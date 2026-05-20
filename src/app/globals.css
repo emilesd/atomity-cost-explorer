@@ -150,6 +150,20 @@
   }
 }
 
+/* Focus-dim: when any bar in the grid is hovered, dim the others using
+   :has() — no JS, GPU-accelerated, automatically respects reduced motion
+   via the transition-duration override above. */
+.cost-bar-grid {
+  &:has(.cost-bar-container:hover) .cost-bar-container:not(:hover) {
+    opacity: 0.45;
+    filter: saturate(0.7);
+  }
+
+  .cost-bar-container {
+    transition: opacity 0.32s ease, filter 0.32s ease;
+  }
+}
+
 /* ──────────────────────────────────────────────
    Base Styles
    ────────────────────────────────────────────── */
