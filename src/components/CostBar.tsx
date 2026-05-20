@@ -24,11 +24,12 @@ interface CostBarProps {
   };
 }
 
-const ENTER_SPRING = {
-  type: "spring" as const,
-  stiffness: 140,
-  damping: 22,
-  mass: 1.1,
+// Travel transition for the namespace bars flying out of the split state.
+// Tween with a snappy easing settles in exactly ~300ms — predictable and
+// crisp, where a spring would either overshoot or trail.
+const ENTER_TRANSITION = {
+  duration: 0.3,
+  ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
 };
 
 export function CostBar({
@@ -80,12 +81,16 @@ export function CostBar({
       className="cost-bar-container relative flex flex-col items-center gap-2 sm:gap-3"
       initial={enterFrom ? false : { opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{
-        type: "spring",
-        stiffness: 260,
-        damping: 22,
-        delay: enterFrom ? 0 : index * 0.06,
-      }}
+      transition={
+        enterFrom
+          ? ENTER_TRANSITION
+          : {
+              type: "spring",
+              stiffness: 260,
+              damping: 22,
+              delay: index * 0.06,
+            }
+      }
     >
       <div
         className="relative flex w-full items-end"
@@ -104,7 +109,7 @@ export function CostBar({
           }}
           initial={buttonInitial}
           animate={buttonAnimate}
-          transition={ENTER_SPRING}
+          transition={ENTER_TRANSITION}
           whileHover={isInteractive ? { scale: 1.04 } : undefined}
           whileTap={isInteractive ? { scale: 0.97 } : undefined}
           aria-label={`${node.name}: $${node.total.toLocaleString()}. ${

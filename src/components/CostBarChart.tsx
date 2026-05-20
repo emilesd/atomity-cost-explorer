@@ -109,7 +109,7 @@ export function CostBarChart({
             }
           : {}
       }
-      transition={{ duration: 1.8, ease: "easeOut" }}
+      transition={{ duration: 1.1, ease: "easeOut" }}
       role="img"
       aria-label={`Cost comparison chart showing ${nodes.length} ${level}s`}
     >

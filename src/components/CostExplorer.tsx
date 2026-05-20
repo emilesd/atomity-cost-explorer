@@ -12,11 +12,11 @@ import { ErrorState } from "./ErrorState";
 
 const LEVELS: DrillLevel[] = ["cluster", "namespace", "pod"];
 
-// Drill-down phase timings (ms) — tuned slow & deliberate so the user can
-// actually feel each step: click feedback → split with gaps → travel.
+// Drill-down phase timings (ms) — tuned so the user feels each beat
+// without dragging: pulse → split-with-gaps HOLD → quick decisive travel.
 const PULSE_MS = 340; // zoom-in feedback after click
-const SPLIT_MS = 780; // fade out + segments appear + HOLD with gaps
-const TRAVEL_MS = 1050; // segments fly to their namespace positions
+const SPLIT_MS = 600; // fade out + segments appear + HOLD with gaps
+const TRAVEL_MS = 300; // segments fly to their namespace positions (snappy)
 
 export type DrillPhase = "idle" | "pulse" | "split" | "travel";
 
