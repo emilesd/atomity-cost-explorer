@@ -20,6 +20,8 @@
   --color-accent-error: #ef4444;
   --color-accent-warning: #f59e0b;
 
+  --color-text-on-accent: #065f46;
+
   --color-border: #e5e7eb;
   --color-border-light: #f3f4f6;
 
@@ -51,6 +53,8 @@
   --color-accent-mint: #6ee7b7;
   --color-accent-mint-light: #064e3b;
   --color-accent-mint-dark: #34d399;
+
+  --color-text-on-accent: #ecfdf5;
 
   --color-border: #374151;
   --color-border-light: #1f2937;
@@ -135,20 +139,7 @@
 
 /* ──────────────────────────────────────────────
    Modern CSS — :has() for parent-aware styling
-   CSS Nesting for clean organization
    ────────────────────────────────────────────── */
-.cost-card {
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
-
-  &:has(:focus-visible) {
-    outline: 2px solid var(--color-accent-mint-dark);
-    outline-offset: 2px;
-  }
-
-  &:has(button:hover) {
-    box-shadow: var(--shadow-md);
-  }
-}
 
 /* Focus-dim: when any bar in the grid is hovered, dim the others using
    :has() — no JS, GPU-accelerated, automatically respects reduced motion

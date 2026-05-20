@@ -16,6 +16,8 @@ export const tokens = {
     accentError: "var(--color-accent-error)",
     accentWarning: "var(--color-accent-warning)",
 
+    textOnAccent: "var(--color-text-on-accent)",
+
     border: "var(--color-border)",
     borderLight: "var(--color-border-light)",
   },

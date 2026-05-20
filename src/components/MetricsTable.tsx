@@ -17,7 +17,7 @@ function EfficiencyBadge({ value }: { value: number }) {
       className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
       style={{
         backgroundColor: `color-mix(in srgb, var(--color-accent-success) ${value}%, var(--color-accent-error))`,
-        color: "#fff",
+        color: "var(--color-text-on-accent)",
       }}
     >
       {value}%

@@ -198,7 +198,8 @@ export function CostExplorer() {
             </span>
             <motion.span
               key={`badge-${currentLevel}-${path[path.length - 1]?.id ?? "root"}`}
-              className="rounded-full bg-mint px-4 py-1.5 text-sm font-semibold text-[#065f46]"
+              className="rounded-full bg-mint px-4 py-1.5 text-sm font-semibold"
+              style={{ color: "var(--color-text-on-accent)" }}
               initial={{ opacity: 0, scale: 0.92, y: -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ type: "spring", stiffness: 300, damping: 24 }}

@@ -1,8 +1,6 @@
 # Atomity Cloud Cost Explorer
 
-An interactive, scroll-triggered cloud infrastructure cost visualization built for the Atomity Frontend Engineering Challenge.
-
-**Live Demo:** [https://atomity-cost-explorer.vercel.app](https://atomity-cost-explorer.vercel.app)
+An interactive cloud infrastructure cost visualization built for the Atomity Frontend Engineering Challenge.
 
 ---
 
@@ -13,8 +11,8 @@ I chose the **hierarchical cost explorer** (0:30–0:40 in the video) because it
 Rather than pixel-copying the reference, I interpreted the concept as an interactive drill-down experience where:
 
 - Users see proportional cost bars at each level
-- Clicking a bar drills into its children with animated transitions
-- A breadcrumb trail lets users navigate back up
+- Clicking a bar drills into its children with a phased animation
+- A back chip lets users navigate up
 - A metrics table updates dynamically with animated counters
 - The entire section is scroll-triggered
 
@@ -22,24 +20,35 @@ Rather than pixel-copying the reference, I interpreted the concept as an interac
 
 ## Animation Approach
 
-The **drill-down morph** is the centerpiece — what makes this submission feel alive:
+The **drill-down morph** is the centerpiece — a 4-phase state machine that makes each transition feel deliberate:
 
-1. **Click capture:** When a user clicks a parent bar, its `DOMRect` and grid index are captured
-2. **Split origin:** The parent's height is divided into proportional slices per child (e.g., Namespace A = 19% of Cluster A height)
-3. **Initial transform:** Each new child bar mounts with calculated `x` (horizontal offset from parent's column to its target column), `y` (vertical stack offset inside parent), and `scaleY` (matching its slice fraction)
-4. **Spring travel:** All children spring-animate to `x: 0, y: 0, scaleY: 1` — effectively the parent bar appears to **split, fly out, and grow** into its children
-5. **Color flash:** The bar background pulses through a darker mint shade mid-transition for visual emphasis
-6. **Container blink:** The chart card's background pulses to mint-light briefly to signal the level change
-7. **Stagger-free children:** Drill-down children skip the entrance stagger to keep the morph synchronized
+### Phase 1 — Pulse (340ms)
+Click a cluster bar → it zooms to 1.08× with a darker green flash as immediate feedback.
+
+### Phase 2 — Split + Hold (600ms)
+The solid bar fades out while stacked child segments fade in with visible 6px gaps between them, held long enough for the user to read "this cluster is made of 4 namespaces."
+
+### Phase 3 — Diagonal Travel (1.8s)
+Each segment slides diagonally from its stack position down to its own column's baseline. A landing burst (halo glow + baseline splash + bar flash) fires at the exact moment each bar arrives.
+
+### Phase 4 — Grow (1.6s)
+Bars expand from their slice height to full natural height with a sustained dark-to-light color settle. The growth is a separate phase so the user sees "travel" and "grow" as distinct beats.
 
 Other animations:
 
 - **Scroll-triggered entrance:** `useInView` with margin offset triggers a spring entrance
 - **Staggered bar reveal:** Initial bars enter with a staggered delay (`index * 0.06s`)
 - **Animated counters:** Dollar values count up using Framer Motion's `animate()` utility, preserving previous value across drill-downs
-- **Breadcrumb morphing:** Navigation items enter/exit with spring-based x-axis transitions and `AnimatePresence`
-- **Hover feedback:** Interactive bars scale slightly on hover
-- **Reduced motion:** `window.matchMedia('prefers-reduced-motion')` is respected — animations skip to final state. A global CSS rule also disables all CSS transitions/animations
+- **Hover feedback:** Interactive bars scale slightly on hover; sibling bars dim via CSS `:has()` (no JS)
+- **Grid-line pulse:** Dashed gridlines breathe and turn mint during transitions
+- **Reduced motion:** `window.matchMedia('prefers-reduced-motion')` is respected — animations skip to final state. A global CSS rule also disables all CSS transitions/animations.
+
+### Click Reliability
+
+Drill-down clicks are protected by:
+- A ref-based `drillLock` that prevents double-fire from rapid clicks (setState batching means phase may still read "idle" on second click)
+- `pointerEvents: "none"` on disabled bars so Framer Motion's gesture recognizers cannot swallow events
+- Early return for leaf nodes (pods have no children)
 
 ---
 
@@ -58,17 +67,6 @@ CSS custom properties defined in `:root` serve as the single source of truth:
 }
 ```
 
-A TypeScript `tokens` object mirrors these for type-safe access in components:
-
-```ts
-export const tokens = {
-  colors: {
-    bgPrimary: "var(--color-bg-primary)",
-    accentMint: "var(--color-accent-mint)",
-  },
-} as const;
-```
-
 ### Dark Mode
 
 A `[data-theme="dark"]` selector overrides the same CSS variables, enabling theme switching without changing any component code. Theme preference persists via `localStorage`.
@@ -82,11 +80,11 @@ The `@theme inline` directive maps CSS variables to Tailwind utility classes (`b
 | Feature | Where | Why |
 |---------|-------|-----|
 | `clamp()` | Typography (headings, labels) | Fluid sizing without breakpoints |
-| `@container` queries | `CostBar` component | Cards adapt layout based on their own width, not viewport |
+| `@container` queries | `CostBar` component | Bars adapt label/value size based on their own width |
 | `color-mix()` | Efficiency badges | Dynamic green-to-red gradient based on percentage value |
-| `:has()` selector | `.cost-card` | Parent highlights when child is focused or hovered |
+| `:has()` selector | `.cost-bar-grid` | Hovering one bar dims siblings — pure CSS, no JS, GPU-accelerated |
 | CSS nesting | `globals.css` | Organized selector grouping without preprocessors |
-| Logical properties | `inline-size`, `block-size`, `margin-inline` | Writing-direction-agnostic sizing |
+| Logical properties | `inline-size`, `block-size` | Writing-direction-agnostic sizing |
 
 ---
 
@@ -112,12 +110,6 @@ Data is fetched from [DummyJSON Products API](https://dummyjson.com/products) an
 - `refetchOnWindowFocus: false` — no unnecessary refetches
 - Instant display on revisit from cache
 
-### State Management
-
-- **Loading:** Animated skeleton with pulsing bars and table rows
-- **Error:** Alert with error message and retry button
-- **Success:** Full chart and table with animated entrance
-
 ---
 
 ## Libraries Used
@@ -130,7 +122,7 @@ Data is fetched from [DummyJSON Products API](https://dummyjson.com/products) an
 | **Tailwind CSS** | 4.x | Utility-first CSS with `@theme` integration |
 | **Geist** | (via next/font) | Clean sans-serif + monospace for data display |
 
-No pre-built UI component libraries were used. Every component (cards, badges, bars, breadcrumbs, tables, toggles) is hand-built.
+No pre-built UI component libraries were used.
 
 ---
 
@@ -139,11 +131,9 @@ No pre-built UI component libraries were used. Every component (cards, badges, b
 ```
 src/
   app/
-    globals.css         — Design tokens, modern CSS, theme variables
+    globals.css         — Design tokens, :has() sibling-dim, container queries
     layout.tsx          — Root layout with QueryProvider
-    page.tsx            — Main page with hero + CostExplorer
-  tokens/
-    index.ts            — TypeScript design token constants
+    page.tsx            — Hero section + CostExplorer + footer
   types/
     index.ts            — CostNode, DrillLevel, cost category types
   lib/
@@ -154,11 +144,10 @@ src/
   providers/
     QueryProvider.tsx    — React Query client provider
   components/
-    CostExplorer.tsx    — Main orchestrator (state, drill-down logic)
-    CostBarChart.tsx    — Animated bar chart container
-    CostBar.tsx         — Individual proportional bar with hover/click
+    CostExplorer.tsx    — State machine (phase timing, back chip, scrollIntoView)
+    CostBarChart.tsx    — Grid container (gridline pulse, enterFrom math, :has() dim)
+    CostBar.tsx         — Individual bar (click, pulse, split, travel, grow, landing burst)
     MetricsTable.tsx    — Data table with animated rows
-    Breadcrumb.tsx      — Navigation breadcrumb with morphing animation
     AnimatedCounter.tsx — Counting number animation
     ThemeToggle.tsx     — Dark/light mode toggle
     LoadingState.tsx    — Skeleton loading UI
@@ -172,19 +161,17 @@ src/
 - **Data normalization over raw data:** API product prices vary wildly, so I scale totals to realistic cloud-cost ranges. This sacrifices "real" data accuracy but makes the visualization meaningful.
 - **Chunk-based namespaces:** Instead of grouping by product brand (which gives uneven distribution), I chunk products into fixed groups to guarantee 4 namespaces per cluster.
 - **CSS variables over Tailwind config:** The challenge explicitly asks for a token architecture. CSS custom properties give runtime theming (dark mode) while Tailwind's `@theme` gives utility class integration — both approaches work together.
-- **Spring physics over cubic-bezier:** Spring-based easing feels more natural for UI transitions and demonstrates animation craftsmanship.
-- **AnimatePresence mode="wait":** Ensures clean exit → enter transitions, avoiding visual overlap between drill-down levels.
+- **Phase state machine over layoutId:** Framer Motion's `layoutId` proved too hard to control for the specific "split → travel → grow" sequence. An explicit 4-phase timer with per-property transitions gives deterministic, predictable motion.
+- **Ref-based drill lock over state guard:** React's setState batching can leave `phase === "idle"` visible to a second rapid click. A synchronous ref flip prevents the race.
 
 ---
 
 ## What I Would Improve With More Time
 
-- **Shared layout animation:** Use Framer Motion's `layoutId` to morph the clicked bar into the next level's chart container for a seamless visual connection
-- **Mini sparkline in table rows:** Show a small cost trend line for each row to add depth
 - **Keyboard navigation:** Full arrow key support for navigating between bars and drill levels
 - **URL-based navigation:** Encode the drill path in the URL for shareable deep links
-- **Server-side rendering:** Use Next.js server components with `fetch` caching for initial data load, eliminating the client-side loading state on first paint
-- **End-to-end tests:** Playwright tests for drill-down flow, breadcrumb navigation, and dark mode toggle
+- **Server-side rendering:** Use Next.js server components with `fetch` caching for initial data load
+- **End-to-end tests:** Playwright tests for drill-down flow, back navigation, and dark mode toggle
 
 ---
 
@@ -196,11 +183,3 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
-
-## Deploy
-
-```bash
-npx vercel
-```
-
-Or connect the GitHub repo to Vercel for automatic deployments.

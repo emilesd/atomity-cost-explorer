@@ -230,7 +230,7 @@ export function CostBar({
                         backgroundColor: [
                           "var(--color-accent-mint-dark)", // travelling
                           "var(--color-accent-mint-dark)", // still travelling
-                          "#bbf7d0",                        // burst at landing
+                          "var(--color-accent-mint-light)",  // burst at landing
                           "var(--color-accent-mint)",      // settled
                         ],
                         filter: [

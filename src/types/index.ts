@@ -17,12 +17,6 @@ export interface CostNode {
 
 export type DrillLevel = "cluster" | "namespace" | "pod";
 
-export interface BreadcrumbItem {
-  id: string;
-  name: string;
-  level: DrillLevel;
-}
-
 export const COST_CATEGORIES: (keyof CostBreakdown)[] = [
   "cpu",
   "ram",
@@ -37,10 +31,4 @@ export const COST_LABELS: Record<keyof CostBreakdown, string> = {
   storage: "Storage",
   network: "Network",
   gpu: "GPU",
-};
-
-export const LEVEL_LABELS: Record<DrillLevel, string> = {
-  cluster: "Cluster",
-  namespace: "Namespace",
-  pod: "Pod",
 };
