@@ -11,14 +11,21 @@ import { LoadingState } from "./LoadingState";
 import { ErrorState } from "./ErrorState";
 
 const LEVELS: DrillLevel[] = ["cluster", "namespace", "pod"];
-const TRANSITION_MS = 800;
+
+// Drill-down phase timings (ms) — tuned slow & deliberate so the user can
+// actually feel each step: click feedback → split with gaps → travel.
+const PULSE_MS = 340; // zoom-in feedback after click
+const SPLIT_MS = 780; // fade out + segments appear + HOLD with gaps
+const TRAVEL_MS = 1050; // segments fly to their namespace positions
+
+export type DrillPhase = "idle" | "pulse" | "split" | "travel";
 
 export function CostExplorer() {
   const { data, isLoading, error, refetch } = useClusterData();
   const [path, setPath] = useState<CostNode[]>([]);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [phase, setPhase] = useState<DrillPhase>("idle");
   const [drillSource, setDrillSource] = useState<DrillSource | null>(null);
-  const transitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const sectionRef = useRef<HTMLElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-80px" });
 
@@ -45,36 +52,59 @@ export function CostExplorer() {
     return items;
   }, [path]);
 
-  const triggerTransition = useCallback(() => {
-    setIsTransitioning(true);
-    if (transitionTimer.current) clearTimeout(transitionTimer.current);
-    transitionTimer.current = setTimeout(() => {
-      setIsTransitioning(false);
-      setDrillSource(null);
-    }, TRANSITION_MS);
+  const clearTimers = useCallback(() => {
+    timers.current.forEach((t) => clearTimeout(t));
+    timers.current = [];
   }, []);
 
   const handleDrillDown = useCallback(
     (node: CostNode, rect: DOMRect, index: number) => {
       if (!node.children?.length) return;
+      clearTimers();
+
+      // Phase 1 — Pulse: bar zooms in briefly (click feedback)
       setDrillSource({ parent: node, rect, index });
-      triggerTransition();
-      setPath((prev) => [...prev, node]);
+      setPhase("pulse");
+
+      // Phase 2 — Split: bar fades while segments appear with gaps, then HOLD
+      timers.current.push(
+        setTimeout(() => setPhase("split"), PULSE_MS)
+      );
+
+      // Phase 3 — Travel: path updates, namespace bars fly from split positions
+      timers.current.push(
+        setTimeout(() => {
+          setPhase("travel");
+          setPath((prev) => [...prev, node]);
+        }, PULSE_MS + SPLIT_MS)
+      );
+
+      // Phase 4 — Idle
+      timers.current.push(
+        setTimeout(() => {
+          setPhase("idle");
+          setDrillSource(null);
+        }, PULSE_MS + SPLIT_MS + TRAVEL_MS)
+      );
     },
-    [triggerTransition]
+    [clearTimers]
   );
 
   const handleNavigate = useCallback(
     (index: number) => {
+      clearTimers();
       setDrillSource(null);
-      triggerTransition();
+      setPhase("travel");
+      timers.current.push(
+        setTimeout(() => setPhase("idle"), TRAVEL_MS)
+      );
       if (index === 0) {
         setPath([]);
       } else {
         setPath((prev) => prev.slice(0, index));
       }
     },
-    [triggerTransition]
+    [clearTimers]
   );
 
   const headingText =
@@ -83,6 +113,7 @@ export function CostExplorer() {
       : `${path[path.length - 1].name} — ${currentLevel === "namespace" ? "Namespaces" : "Pods"}`;
 
   const levelKey = `level-${path.map((n) => n.id).join("/")}`;
+  const isTransitioning = phase !== "idle";
 
   return (
     <section
@@ -141,6 +172,7 @@ export function CostExplorer() {
               level={currentLevel}
               onSelect={handleDrillDown}
               isTransitioning={isTransitioning}
+              phase={phase}
               drillSource={drillSource}
             />
             <MetricsTable

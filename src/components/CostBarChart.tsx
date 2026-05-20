@@ -4,13 +4,11 @@ import { motion } from "framer-motion";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CostNode, DrillLevel } from "@/types";
 import { CostBar } from "./CostBar";
+import type { DrillPhase } from "./CostExplorer";
 
 export interface DrillSource {
-  /** The parent node that was clicked to trigger this drill-down */
   parent: CostNode;
-  /** The clicked bar's bounding rect at click time */
   rect: DOMRect;
-  /** The index of the clicked bar in its grid */
   index: number;
 }
 
@@ -19,19 +17,23 @@ interface CostBarChartProps {
   level: DrillLevel;
   onSelect: (node: CostNode, rect: DOMRect, index: number) => void;
   isTransitioning: boolean;
-  /** When set, the new bars in this view will animate from the source position */
+  phase: DrillPhase;
   drillSource: DrillSource | null;
 }
+
+// Visible gap between stacked split segments (px)
+export const SEGMENT_GAP_PX = 6;
 
 export function CostBarChart({
   nodes,
   level,
   onSelect,
   isTransitioning,
+  phase,
   drillSource,
 }: CostBarChartProps) {
   const maxTotal = Math.max(...nodes.map((n) => n.total));
-  const isInteractive = level !== "pod";
+  const isInteractive = level !== "pod" && phase === "idle";
   const gridRef = useRef<HTMLDivElement>(null);
   const [gridRect, setGridRect] = useState<DOMRect | null>(null);
 
@@ -41,13 +43,14 @@ export function CostBarChart({
     }
   }, [nodes.length]);
 
-  // Compute enterFrom data for each new bar when there's a drill source
+  // Compute enterFrom data for the namespace/pod bars after `path` updates.
+  // Each new bar starts at its parent's column position, stacked with the
+  // same gaps that were visible during the split phase.
   const enterFromMap = useMemo(() => {
     const map = new Map<
       string,
       {
         sourceIndex: number;
-        sourceTotal: number;
         sourceHeightPx: number;
         siblingOffsetPx: number;
         columnWidthPx: number;
@@ -60,7 +63,6 @@ export function CostBarChart({
     const parent = drillSource.parent;
     if (!parent.children) return map;
 
-    // Verify the current view is showing the children of the drill source
     const childIds = new Set(parent.children.map((c) => c.id));
     const isChildView = nodes.every((n) => childIds.has(n.id));
     if (!isChildView) return map;
@@ -68,22 +70,24 @@ export function CostBarChart({
     const columnWidthPx = gridRect.width / nodes.length;
     const parentTotal = parent.children.reduce((s, c) => s + c.total, 0);
     const sourceHeightPx = drillSource.rect.height;
+    const totalGapsPx = (parent.children.length - 1) * SEGMENT_GAP_PX;
+    const availableHeight = sourceHeightPx - totalGapsPx;
 
-    // Calculate cumulative offset for stacking — each sibling starts above the previous one
+    // Stack from bottom up — first child sits at the bottom of the parent
     let cumulativeHeight = 0;
-    parent.children.forEach((child) => {
+    parent.children.forEach((child, i) => {
       const sharePercent = (child.total / parentTotal) * 100;
-      const sliceHeight = (sharePercent / 100) * sourceHeightPx;
-      const siblingOffsetPx = -(cumulativeHeight + sliceHeight / 2);
+      const sliceHeight = (sharePercent / 100) * availableHeight;
+      const gapAbove = i * SEGMENT_GAP_PX;
+      const siblingOffsetPx = -(cumulativeHeight + sliceHeight / 2 + gapAbove);
       cumulativeHeight += sliceHeight;
 
       map.set(child.id, {
         sourceIndex: drillSource.index,
-        sourceTotal: parent.total,
         sourceHeightPx,
         siblingOffsetPx,
         columnWidthPx,
-        sharePercent,
+        sharePercent: (sliceHeight / sourceHeightPx) * 100,
       });
     });
 
@@ -97,15 +101,15 @@ export function CostBarChart({
       animate={
         isTransitioning
           ? {
-              backgroundColor: [
-                "var(--color-bg-card)",
-                "color-mix(in srgb, var(--color-accent-mint-light) 70%, var(--color-bg-card))",
-                "var(--color-bg-card)",
+              boxShadow: [
+                "var(--shadow-sm)",
+                "0 0 0 1px var(--color-accent-mint) inset, 0 8px 32px color-mix(in srgb, var(--color-accent-mint) 18%, transparent)",
+                "var(--shadow-sm)",
               ],
             }
           : {}
       }
-      transition={{ duration: 0.7, ease: "easeOut" }}
+      transition={{ duration: 1.8, ease: "easeOut" }}
       role="img"
       aria-label={`Cost comparison chart showing ${nodes.length} ${level}s`}
     >
@@ -140,6 +144,8 @@ export function CostBarChart({
               onSelect={onSelect}
               isInteractive={isInteractive}
               isTransitioning={isTransitioning}
+              phase={phase}
+              isClickSource={drillSource?.parent.id === node.id}
               enterFrom={enterFromMap.get(node.id)}
             />
           ))}

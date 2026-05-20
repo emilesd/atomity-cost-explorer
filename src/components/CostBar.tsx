@@ -1,8 +1,10 @@
 "use client";
 
-import { motion, type TargetAndTransition } from "framer-motion";
+import { AnimatePresence, motion, type TargetAndTransition } from "framer-motion";
 import { useRef } from "react";
 import type { CostNode } from "@/types";
+import type { DrillPhase } from "./CostExplorer";
+import { SEGMENT_GAP_PX } from "./CostBarChart";
 
 interface CostBarProps {
   node: CostNode;
@@ -11,11 +13,10 @@ interface CostBarProps {
   onSelect: (node: CostNode, rect: DOMRect, index: number) => void;
   isInteractive: boolean;
   isTransitioning: boolean;
-  /** If set, this bar is entering as a child of a drill-down source.
-   *  It will animate from the source position to its natural position. */
+  phase: DrillPhase;
+  isClickSource: boolean;
   enterFrom?: {
     sourceIndex: number;
-    sourceTotal: number;
     sourceHeightPx: number;
     siblingOffsetPx: number;
     columnWidthPx: number;
@@ -25,8 +26,9 @@ interface CostBarProps {
 
 const ENTER_SPRING = {
   type: "spring" as const,
-  stiffness: 200,
-  damping: 24,
+  stiffness: 140,
+  damping: 22,
+  mass: 1.1,
 };
 
 export function CostBar({
@@ -36,6 +38,8 @@ export function CostBar({
   onSelect,
   isInteractive,
   isTransitioning,
+  phase,
+  isClickSource,
   enterFrom,
 }: CostBarProps) {
   const heightPercent = Math.max(20, (node.total / maxTotal) * 100);
@@ -47,24 +51,29 @@ export function CostBar({
     if (rect) onSelect(node, rect, index);
   };
 
-  // Compute starting transform when this bar is entering from a drill-down source.
-  // x: horizontal distance from source column to this column
-  // scaleY: the source piece was smaller (just a slice of parent) — start small, then grow
-  let initial: TargetAndTransition = { opacity: 0, y: 20 };
-  let animate: TargetAndTransition = { opacity: 1, y: 0, x: 0, scaleY: 1 };
+  // Drill-down entry transform: place the new bar visually at the parent's
+  // column, stacked at the corresponding split-segment position, then
+  // animate to its natural grid position.
+  let buttonInitial: TargetAndTransition | false = false;
+  let buttonAnimate: TargetAndTransition = { opacity: 1, x: 0, y: 0, scaleY: 1 };
 
   if (enterFrom) {
-    const xOffset =
-      (enterFrom.sourceIndex - index) * enterFrom.columnWidthPx;
-    initial = {
+    const xOffset = (enterFrom.sourceIndex - index) * enterFrom.columnWidthPx;
+    buttonInitial = {
       opacity: 1,
       x: xOffset,
       y: enterFrom.siblingOffsetPx,
       scaleY: enterFrom.sharePercent / 100,
-      scaleX: 1,
     };
-    animate = { opacity: 1, x: 0, y: 0, scaleY: 1, scaleX: 1 };
+    buttonAnimate = { opacity: 1, x: 0, y: 0, scaleY: 1 };
+  } else if (!isClickSource) {
+    buttonInitial = false;
   }
+
+  // Show segment-split rendering on the clicked bar during pulse and split phases
+  const showSplitSegments =
+    isClickSource && (phase === "pulse" || phase === "split");
+  const childTotal = node.children?.reduce((s, c) => s + c.total, 0) ?? 0;
 
   return (
     <motion.div
@@ -93,33 +102,79 @@ export function CostBar({
             minHeight: "32px",
             transformOrigin: "bottom",
           }}
-          initial={initial}
-          animate={animate}
+          initial={buttonInitial}
+          animate={buttonAnimate}
           transition={ENTER_SPRING}
-          whileHover={
-            isInteractive && !isTransitioning
-              ? { scale: 1.04 }
-              : undefined
-          }
+          whileHover={isInteractive ? { scale: 1.04 } : undefined}
           whileTap={isInteractive ? { scale: 0.97 } : undefined}
           aria-label={`${node.name}: $${node.total.toLocaleString()}. ${
             isInteractive ? "Click to drill down." : ""
           }`}
         >
+          {/* Solid bar — visible at idle. During pulse: zooms in then back.
+              During split: fades out as segments take over. */}
           <motion.div
             className="absolute inset-0 rounded-[var(--radius-lg)] shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent-mint-dark)_24%,transparent)]"
-            style={{ backgroundColor: "var(--color-accent-mint)" }}
-            animate={{
-              backgroundColor: isTransitioning
-                ? [
-                    "var(--color-accent-mint)",
-                    "var(--color-accent-mint-dark)",
-                    "var(--color-accent-mint)",
-                  ]
-                : "var(--color-accent-mint)",
+            style={{
+              backgroundColor: "var(--color-accent-mint)",
+              transformOrigin: "center",
             }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            animate={
+              isClickSource && phase === "pulse"
+                ? {
+                    scale: [1, 1.08, 1.04],
+                    backgroundColor: "var(--color-accent-mint-dark)",
+                    opacity: 1,
+                  }
+                : isClickSource && phase === "split"
+                  ? { scale: 1, opacity: 0 }
+                  : { scale: 1, opacity: 1, backgroundColor: "var(--color-accent-mint)" }
+            }
+            transition={
+              isClickSource && phase === "pulse"
+                ? { duration: 0.34, ease: "easeOut" }
+                : isClickSource && phase === "split"
+                  ? { duration: 0.28, ease: "easeOut" }
+                  : { duration: 0.45 }
+            }
           />
+
+          {/* Split segments — stacked with gaps. Appear during pulse,
+              fully visible and held during split phase. */}
+          <AnimatePresence>
+            {showSplitSegments && node.children && childTotal > 0 && (
+              <motion.div
+                key="segments"
+                className="pointer-events-none absolute inset-0 flex flex-col-reverse"
+                style={{ gap: `${SEGMENT_GAP_PX}px` }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.28 }}
+              >
+                {node.children.map((child, segIdx) => {
+                  const sharePercent = (child.total / childTotal) * 100;
+                  return (
+                    <motion.div
+                      key={child.id}
+                      className="rounded-[var(--radius-lg)] shadow-[0_2px_8px_color-mix(in_srgb,var(--color-accent-mint-dark)_30%,transparent)]"
+                      style={{
+                        height: `${sharePercent}%`,
+                        backgroundColor: "var(--color-accent-mint-dark)",
+                      }}
+                      initial={{ opacity: 0, scale: 0.92 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        delay: segIdx * 0.06,
+                        duration: 0.3,
+                        ease: "easeOut",
+                      }}
+                    />
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.button>
       </div>
 
