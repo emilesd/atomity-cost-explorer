@@ -131,17 +131,35 @@ export function CostBarChart({
       role="img"
       aria-label={`Cost comparison chart showing ${nodes.length} ${level}s`}
     >
-      <div
+      <motion.div
         className="pointer-events-none absolute inset-x-4 sm:inset-x-6 top-6 bottom-20 flex flex-col justify-between"
         aria-hidden="true"
+        animate={
+          isTransitioning
+            ? {
+                opacity: [0.5, 1, 0.5],
+              }
+            : { opacity: 0.5 }
+        }
+        transition={
+          isTransitioning
+            ? { duration: 0.9, repeat: Infinity, ease: "easeInOut" }
+            : { duration: 0.3 }
+        }
       >
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="border-t border-dashed border-[var(--color-border)] opacity-50"
+            className="border-t border-dashed border-[var(--color-accent-mint-dark)]"
+            style={{
+              borderColor: isTransitioning
+                ? "var(--color-accent-mint-dark)"
+                : "var(--color-border)",
+              transition: "border-color 0.35s ease",
+            }}
           />
         ))}
-      </div>
+      </motion.div>
 
       <div className="relative overflow-x-auto">
         <div
