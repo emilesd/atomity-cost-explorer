@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { motion, useInView } from "framer-motion";
+import { AnimatePresence, motion, useInView } from "framer-motion";
 import { useClusterData } from "@/hooks/useClusterData";
-import type { BreadcrumbItem, CostNode, DrillLevel } from "@/types";
-import { Breadcrumb } from "./Breadcrumb";
+import type { CostNode, DrillLevel } from "@/types";
 import { CostBarChart, type DrillSource } from "./CostBarChart";
 import { MetricsTable } from "./MetricsTable";
 import { LoadingState } from "./LoadingState";
@@ -40,18 +39,11 @@ export function CostExplorer() {
     return parent.children ?? [];
   }, [data, path]);
 
-  const breadcrumbItems: BreadcrumbItem[] = useMemo(() => {
-    const items: BreadcrumbItem[] = [
-      { id: "root", name: "Clusters", level: "cluster" },
-    ];
-    path.forEach((node, i) => {
-      items.push({
-        id: node.id,
-        name: node.name,
-        level: LEVELS[Math.min(i + 1, 2)] ?? "pod",
-      });
-    });
-    return items;
+  // Label for the back chip — name of the level one step up from current.
+  const backLabel = useMemo(() => {
+    if (path.length === 0) return null;
+    if (path.length === 1) return "All Clusters";
+    return path[path.length - 2].name;
   }, [path]);
 
   const clearTimers = useCallback(() => {
@@ -130,8 +122,39 @@ export function CostExplorer() {
         transition={{ type: "spring", stiffness: 200, damping: 24 }}
         className="flex flex-col gap-8"
       >
-        <header className="flex flex-col gap-4">
+        <header className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
+            <AnimatePresence initial={false} mode="popLayout">
+              {backLabel && (
+                <motion.button
+                  key={`back-${path.length}`}
+                  type="button"
+                  onClick={() => handleNavigate(path.length - 1)}
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-card px-3 py-1.5 text-sm font-medium text-muted hover:text-foreground hover:border-[var(--color-accent-mint-dark)] transition-colors focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2"
+                  initial={{ opacity: 0, x: -8, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                  aria-label={`Back to ${backLabel}`}
+                >
+                  <svg
+                    className="inline-size-3.5 block-size-3.5 transition-transform group-hover:-translate-x-0.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M15 19l-7-7 7-7"
+                    />
+                  </svg>
+                  {backLabel}
+                </motion.button>
+              )}
+            </AnimatePresence>
             <span className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-sm font-medium text-muted">
               Last 30 Days
             </span>
@@ -143,14 +166,12 @@ export function CostExplorer() {
               transition={{ type: "spring", stiffness: 300, damping: 24 }}
             >
               {currentLevel === "cluster"
-                ? "Cluster"
+                ? "All Clusters"
                 : currentLevel === "namespace"
                   ? path[path.length - 1]?.name
-                  : `${path[path.length - 2]?.name} — ${path[path.length - 1]?.name}`}
+                  : `${path[path.length - 2]?.name} › ${path[path.length - 1]?.name}`}
             </motion.span>
           </div>
-
-          <Breadcrumb items={breadcrumbItems} onNavigate={handleNavigate} />
 
           <h2
             id="cost-explorer-heading"
