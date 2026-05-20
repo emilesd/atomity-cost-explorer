@@ -168,7 +168,7 @@ export function CostExplorer() {
                   key={`back-${path.length}`}
                   type="button"
                   onClick={() => handleNavigate(path.length - 1)}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-card px-3 py-1.5 text-sm font-medium text-muted hover:text-foreground hover:border-[var(--color-accent-mint-dark)] transition-colors focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2"
+                  className="group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--color-border)] bg-card px-3 py-1.5 text-sm font-medium text-muted hover:text-foreground hover:border-[var(--color-accent-mint-dark)] transition-colors focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2"
                   initial={{ opacity: 0, x: -8, scale: 0.95 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -8, scale: 0.95 }}
@@ -193,12 +193,12 @@ export function CostExplorer() {
                 </motion.button>
               )}
             </AnimatePresence>
-            <span className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-sm font-medium text-muted">
+            <span className="whitespace-nowrap rounded-full border border-[var(--color-border)] px-4 py-1.5 text-sm font-medium text-muted">
               Last 30 Days
             </span>
             <motion.span
               key={`badge-${currentLevel}-${path[path.length - 1]?.id ?? "root"}`}
-              className="rounded-full bg-mint px-4 py-1.5 text-sm font-semibold"
+              className="whitespace-nowrap rounded-full bg-mint px-4 py-1.5 text-sm font-semibold"
               style={{ color: "var(--color-text-on-accent)" }}
               initial={{ opacity: 0, scale: 0.92, y: -4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}

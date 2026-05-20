@@ -304,10 +304,10 @@ export function CostBar({
       </div>
 
       <div className="text-center">
-        <p className="cost-bar-label font-semibold text-foreground">
+        <p className="cost-bar-label whitespace-nowrap font-semibold text-foreground">
           {node.name}
         </p>
-        <p className="cost-bar-value font-mono text-muted">
+        <p className="cost-bar-value whitespace-nowrap font-mono text-muted">
           ${node.total.toLocaleString()}
         </p>
       </div>
