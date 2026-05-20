@@ -28,22 +28,23 @@ interface CostBarProps {
   };
 }
 
-// Two-beat entry: first the bar TRAVELS horizontally from the split
-// position to its own column (still at slice height), then it GROWS
-// vertically to its full natural height. Keeping the two phases separate
-// makes the motion legible — the user sees travel, then growth.
-const TRAVEL_DURATION_S = 2.5;
-const GROW_DURATION_S = 2.0;
-const TRAVEL_EASE = [0.4, 0, 0.2, 1] as [number, number, number, number];
+// Two-beat entry: first the bar TRAVELS diagonally (x + y simultaneously)
+// from the split position down to its column's baseline (still at slice
+// height), then it GROWS vertically to its full natural height.
+//
+// Diagonal motion reads more naturally than the previous "horizontal then
+// drop" — the bars look like they're settling onto a table from the
+// stack, rather than gliding sideways in mid-air.
+const TRAVEL_DURATION_S = 1.8;
+const GROW_DURATION_S = 1.6;
+const TRAVEL_EASE = [0.32, 0.72, 0, 1] as [number, number, number, number];
 const GROW_EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 const ENTER_TRANSITION = {
+  // x + y share the travel phase → diagonal slide into column + baseline.
   x: { duration: TRAVEL_DURATION_S, ease: TRAVEL_EASE },
-  y: {
-    duration: GROW_DURATION_S,
-    delay: TRAVEL_DURATION_S,
-    ease: GROW_EASE,
-  },
+  y: { duration: TRAVEL_DURATION_S, ease: TRAVEL_EASE },
+  // scaleY waits, then grows the bar up from baseline to full height.
   scaleY: {
     duration: GROW_DURATION_S,
     delay: TRAVEL_DURATION_S,
@@ -187,7 +188,12 @@ export function CostBar({
                   : enterFrom && phase === "travel"
                     ? {
                         duration: TRAVEL_DURATION_S + GROW_DURATION_S,
-                        times: [0, TRAVEL_DURATION_S / (TRAVEL_DURATION_S + GROW_DURATION_S), 1],
+                        times: [
+                          0,
+                          TRAVEL_DURATION_S /
+                            (TRAVEL_DURATION_S + GROW_DURATION_S),
+                          1,
+                        ],
                         ease: "easeOut",
                       }
                     : { duration: 0.45 }
