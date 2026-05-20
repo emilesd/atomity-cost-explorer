@@ -10,26 +10,31 @@ interface CostBarProps {
   node: CostNode;
   maxTotal: number;
   index: number;
-  onSelect: (node: CostNode, rect: DOMRect, index: number) => void;
+  onSelect: (
+    node: CostNode,
+    rect: DOMRect,
+    index: number,
+    trackHeightPx: number
+  ) => void;
   isInteractive: boolean;
   isTransitioning: boolean;
   phase: DrillPhase;
   isClickSource: boolean;
   enterFrom?: {
     sourceIndex: number;
-    sourceHeightPx: number;
     siblingOffsetPx: number;
     columnWidthPx: number;
-    sharePercent: number;
+    scaleY: number;
   };
 }
 
 // Travel transition for the namespace bars flying out of the split state.
-// Tween with a snappy easing settles in exactly ~300ms — predictable and
-// crisp, where a spring would either overshoot or trail.
+// Slow tween so the user can actually SEE each bar leave the stack and
+// drift to its own column — fast enough to feel intentional, slow enough
+// to read.
 const ENTER_TRANSITION = {
-  duration: 0.3,
-  ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+  duration: 0.9,
+  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
 };
 
 export function CostBar({
@@ -49,7 +54,12 @@ export function CostBar({
   const handleClick = () => {
     if (!isInteractive) return;
     const rect = buttonRef.current?.getBoundingClientRect();
-    if (rect) onSelect(node, rect, index);
+    // The bar's parent <div> is the fixed-height track (clamp(140px,22vw,220px)).
+    // We pass it up so the chart can compute child bar heights exactly,
+    // making the split→travel handoff pixel-perfect.
+    const trackHeightPx =
+      buttonRef.current?.parentElement?.getBoundingClientRect().height ?? 0;
+    if (rect) onSelect(node, rect, index, trackHeightPx);
   };
 
   // Drill-down entry transform: place the new bar visually at the parent's
@@ -64,7 +74,7 @@ export function CostBar({
       opacity: 1,
       x: xOffset,
       y: enterFrom.siblingOffsetPx,
-      scaleY: enterFrom.sharePercent / 100,
+      scaleY: enterFrom.scaleY,
     };
     buttonAnimate = { opacity: 1, x: 0, y: 0, scaleY: 1 };
   } else if (!isClickSource) {
@@ -154,8 +164,8 @@ export function CostBar({
                 style={{ gap: `${SEGMENT_GAP_PX}px` }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.28 }}
+                exit={{ opacity: 0, transition: { duration: 0.18 } }}
+                transition={{ duration: 0.22 }}
               >
                 {node.children.map((child, segIdx) => {
                   const sharePercent = (child.total / childTotal) * 100;

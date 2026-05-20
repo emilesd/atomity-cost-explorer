@@ -12,11 +12,11 @@ import { ErrorState } from "./ErrorState";
 
 const LEVELS: DrillLevel[] = ["cluster", "namespace", "pod"];
 
-// Drill-down phase timings (ms) — tuned so the user feels each beat
-// without dragging: pulse → split-with-gaps HOLD → quick decisive travel.
+// Drill-down phase timings (ms) — tuned so the user feels each beat:
+// pulse (click feedback) → split-with-gaps HOLD → slow visible travel.
 const PULSE_MS = 340; // zoom-in feedback after click
 const SPLIT_MS = 600; // fade out + segments appear + HOLD with gaps
-const TRAVEL_MS = 300; // segments fly to their namespace positions (snappy)
+const TRAVEL_MS = 900; // segments fly to their namespace positions (visible)
 
 export type DrillPhase = "idle" | "pulse" | "split" | "travel";
 
@@ -58,12 +58,12 @@ export function CostExplorer() {
   }, []);
 
   const handleDrillDown = useCallback(
-    (node: CostNode, rect: DOMRect, index: number) => {
+    (node: CostNode, rect: DOMRect, index: number, trackHeightPx: number) => {
       if (!node.children?.length) return;
       clearTimers();
 
       // Phase 1 — Pulse: bar zooms in briefly (click feedback)
-      setDrillSource({ parent: node, rect, index });
+      setDrillSource({ parent: node, rect, index, trackHeightPx });
       setPhase("pulse");
 
       // Phase 2 — Split: bar fades while segments appear with gaps, then HOLD

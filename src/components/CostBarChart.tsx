@@ -10,12 +10,18 @@ export interface DrillSource {
   parent: CostNode;
   rect: DOMRect;
   index: number;
+  trackHeightPx: number;
 }
 
 interface CostBarChartProps {
   nodes: CostNode[];
   level: DrillLevel;
-  onSelect: (node: CostNode, rect: DOMRect, index: number) => void;
+  onSelect: (
+    node: CostNode,
+    rect: DOMRect,
+    index: number,
+    trackHeightPx: number
+  ) => void;
   isTransitioning: boolean;
   phase: DrillPhase;
   drillSource: DrillSource | null;
@@ -45,16 +51,27 @@ export function CostBarChart({
 
   // Compute enterFrom data for the namespace/pod bars after `path` updates.
   // Each new bar starts at its parent's column position, stacked with the
-  // same gaps that were visible during the split phase.
+  // same gaps that were visible during the split phase, then animates to
+  // its natural grid position.
+  //
+  // Math (per child slice, with transformOrigin: bottom):
+  //   sliceHeight   = parentShare × (sourceBarHeight − totalGaps)
+  //   barNaturalH   = trackHeight × max(0.2, ownTotal / maxChildTotal)
+  //   initial.y     = −(Σ slicesBelow + gapsBelow)        ← bottom of slice
+  //   initial.scaleY = sliceHeight / barNaturalH          ← visual height = slice
+  const childMax = useMemo(
+    () => Math.max(...nodes.map((n) => n.total)),
+    [nodes]
+  );
+
   const enterFromMap = useMemo(() => {
     const map = new Map<
       string,
       {
         sourceIndex: number;
-        sourceHeightPx: number;
         siblingOffsetPx: number;
         columnWidthPx: number;
-        sharePercent: number;
+        scaleY: number;
       }
     >();
 
@@ -70,29 +87,30 @@ export function CostBarChart({
     const columnWidthPx = gridRect.width / nodes.length;
     const parentTotal = parent.children.reduce((s, c) => s + c.total, 0);
     const sourceHeightPx = drillSource.rect.height;
+    const trackHeightPx = drillSource.trackHeightPx || sourceHeightPx;
     const totalGapsPx = (parent.children.length - 1) * SEGMENT_GAP_PX;
     const availableHeight = sourceHeightPx - totalGapsPx;
 
-    // Stack from bottom up — first child sits at the bottom of the parent
-    let cumulativeHeight = 0;
+    let cumulativeBelowPx = 0;
     parent.children.forEach((child, i) => {
-      const sharePercent = (child.total / parentTotal) * 100;
-      const sliceHeight = (sharePercent / 100) * availableHeight;
-      const gapAbove = i * SEGMENT_GAP_PX;
-      const siblingOffsetPx = -(cumulativeHeight + sliceHeight / 2 + gapAbove);
-      cumulativeHeight += sliceHeight;
+      const sliceHeight = (child.total / parentTotal) * availableHeight;
+      const gapsBelowPx = i * SEGMENT_GAP_PX;
+      const siblingOffsetPx = -(cumulativeBelowPx + gapsBelowPx);
+      const barHeightPercent = Math.max(20, (child.total / childMax) * 100);
+      const barNaturalHeightPx = (barHeightPercent / 100) * trackHeightPx;
+      const scaleY = barNaturalHeightPx > 0 ? sliceHeight / barNaturalHeightPx : 1;
+      cumulativeBelowPx += sliceHeight;
 
       map.set(child.id, {
         sourceIndex: drillSource.index,
-        sourceHeightPx,
         siblingOffsetPx,
         columnWidthPx,
-        sharePercent: (sliceHeight / sourceHeightPx) * 100,
+        scaleY,
       });
     });
 
     return map;
-  }, [drillSource, gridRect, nodes]);
+  }, [drillSource, gridRect, nodes, childMax]);
 
   return (
     <motion.div
