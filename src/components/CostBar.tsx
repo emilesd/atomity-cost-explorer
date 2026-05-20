@@ -1,15 +1,33 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, type TargetAndTransition } from "framer-motion";
+import { useRef } from "react";
 import type { CostNode } from "@/types";
 
 interface CostBarProps {
   node: CostNode;
   maxTotal: number;
   index: number;
-  onSelect: (node: CostNode) => void;
+  onSelect: (node: CostNode, rect: DOMRect, index: number) => void;
   isInteractive: boolean;
+  isTransitioning: boolean;
+  /** If set, this bar is entering as a child of a drill-down source.
+   *  It will animate from the source position to its natural position. */
+  enterFrom?: {
+    sourceIndex: number;
+    sourceTotal: number;
+    sourceHeightPx: number;
+    siblingOffsetPx: number;
+    columnWidthPx: number;
+    sharePercent: number;
+  };
 }
+
+const ENTER_SPRING = {
+  type: "spring" as const,
+  stiffness: 200,
+  damping: 24,
+};
 
 export function CostBar({
   node,
@@ -17,55 +35,91 @@ export function CostBar({
   index,
   onSelect,
   isInteractive,
+  isTransitioning,
+  enterFrom,
 }: CostBarProps) {
   const heightPercent = Math.max(20, (node.total / maxTotal) * 100);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const handleClick = () => {
+    if (!isInteractive) return;
+    const rect = buttonRef.current?.getBoundingClientRect();
+    if (rect) onSelect(node, rect, index);
+  };
+
+  // Compute starting transform when this bar is entering from a drill-down source.
+  // x: horizontal distance from source column to this column
+  // scaleY: the source piece was smaller (just a slice of parent) — start small, then grow
+  let initial: TargetAndTransition = { opacity: 0, y: 20 };
+  let animate: TargetAndTransition = { opacity: 1, y: 0, x: 0, scaleY: 1 };
+
+  if (enterFrom) {
+    const xOffset =
+      (enterFrom.sourceIndex - index) * enterFrom.columnWidthPx;
+    initial = {
+      opacity: 1,
+      x: xOffset,
+      y: enterFrom.siblingOffsetPx,
+      scaleY: enterFrom.sharePercent / 100,
+      scaleX: 1,
+    };
+    animate = { opacity: 1, x: 0, y: 0, scaleY: 1, scaleX: 1 };
+  }
 
   return (
     <motion.div
-      className="cost-bar-container flex flex-col items-center gap-2 sm:gap-3"
-      initial={{ opacity: 0, y: 30 }}
+      className="cost-bar-container relative flex flex-col items-center gap-2 sm:gap-3"
+      initial={enterFrom ? false : { opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.85, y: 10 }}
       transition={{
         type: "spring",
         stiffness: 260,
         damping: 22,
-        delay: index * 0.08,
+        delay: enterFrom ? 0 : index * 0.06,
       }}
-      layout
     >
       <div
         className="relative flex w-full items-end"
-        style={{ height: "clamp(120px, 20vw, 200px)" }}
+        style={{ height: "clamp(140px, 22vw, 220px)" }}
       >
         <motion.button
-          onClick={() => isInteractive && onSelect(node)}
+          ref={buttonRef}
+          type="button"
+          onClick={handleClick}
           disabled={!isInteractive}
-          className="cost-card group relative w-full rounded-[var(--radius-lg)] bg-mint transition-all focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2 disabled:cursor-default"
+          className="relative w-full focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2 disabled:cursor-default rounded-[var(--radius-lg)]"
           style={{
             height: `${heightPercent}%`,
             minHeight: "32px",
             transformOrigin: "bottom",
           }}
-          initial={{ scaleY: 0 }}
-          animate={{ scaleY: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 200,
-            damping: 20,
-            delay: index * 0.08 + 0.15,
-          }}
+          initial={initial}
+          animate={animate}
+          transition={ENTER_SPRING}
           whileHover={
-            isInteractive
-              ? { scale: 1.03, boxShadow: "var(--shadow-md)" }
+            isInteractive && !isTransitioning
+              ? { scale: 1.04 }
               : undefined
           }
-          whileTap={isInteractive ? { scale: 0.98 } : undefined}
-          aria-label={`${node.name}: $${node.total.toLocaleString()} total cost. ${isInteractive ? "Click to drill down." : ""}`}
+          whileTap={isInteractive ? { scale: 0.97 } : undefined}
+          aria-label={`${node.name}: $${node.total.toLocaleString()}. ${
+            isInteractive ? "Click to drill down." : ""
+          }`}
         >
-          <span className="sr-only">
-            ${node.total.toLocaleString()} total
-          </span>
+          <motion.div
+            className="absolute inset-0 rounded-[var(--radius-lg)] shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent-mint-dark)_24%,transparent)]"
+            style={{ backgroundColor: "var(--color-accent-mint)" }}
+            animate={{
+              backgroundColor: isTransitioning
+                ? [
+                    "var(--color-accent-mint)",
+                    "var(--color-accent-mint-dark)",
+                    "var(--color-accent-mint)",
+                  ]
+                : "var(--color-accent-mint)",
+            }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          />
         </motion.button>
       </div>
 

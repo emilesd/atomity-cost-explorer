@@ -5,16 +5,20 @@ import { motion, useInView } from "framer-motion";
 import { useClusterData } from "@/hooks/useClusterData";
 import type { BreadcrumbItem, CostNode, DrillLevel } from "@/types";
 import { Breadcrumb } from "./Breadcrumb";
-import { CostBarChart } from "./CostBarChart";
+import { CostBarChart, type DrillSource } from "./CostBarChart";
 import { MetricsTable } from "./MetricsTable";
 import { LoadingState } from "./LoadingState";
 import { ErrorState } from "./ErrorState";
 
 const LEVELS: DrillLevel[] = ["cluster", "namespace", "pod"];
+const TRANSITION_MS = 800;
 
 export function CostExplorer() {
   const { data, isLoading, error, refetch } = useClusterData();
   const [path, setPath] = useState<CostNode[]>([]);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [drillSource, setDrillSource] = useState<DrillSource | null>(null);
+  const transitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-80px" });
 
@@ -41,23 +45,44 @@ export function CostExplorer() {
     return items;
   }, [path]);
 
-  const handleDrillDown = useCallback((node: CostNode) => {
-    if (!node.children?.length) return;
-    setPath((prev) => [...prev, node]);
+  const triggerTransition = useCallback(() => {
+    setIsTransitioning(true);
+    if (transitionTimer.current) clearTimeout(transitionTimer.current);
+    transitionTimer.current = setTimeout(() => {
+      setIsTransitioning(false);
+      setDrillSource(null);
+    }, TRANSITION_MS);
   }, []);
 
-  const handleNavigate = useCallback((index: number) => {
-    if (index === 0) {
-      setPath([]);
-    } else {
-      setPath((prev) => prev.slice(0, index));
-    }
-  }, []);
+  const handleDrillDown = useCallback(
+    (node: CostNode, rect: DOMRect, index: number) => {
+      if (!node.children?.length) return;
+      setDrillSource({ parent: node, rect, index });
+      triggerTransition();
+      setPath((prev) => [...prev, node]);
+    },
+    [triggerTransition]
+  );
+
+  const handleNavigate = useCallback(
+    (index: number) => {
+      setDrillSource(null);
+      triggerTransition();
+      if (index === 0) {
+        setPath([]);
+      } else {
+        setPath((prev) => prev.slice(0, index));
+      }
+    },
+    [triggerTransition]
+  );
 
   const headingText =
     path.length === 0
       ? "Cloud Cost Overview"
       : `${path[path.length - 1].name} — ${currentLevel === "namespace" ? "Namespaces" : "Pods"}`;
+
+  const levelKey = `level-${path.map((n) => n.id).join("/")}`;
 
   return (
     <section
@@ -77,13 +102,19 @@ export function CostExplorer() {
             <span className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-sm font-medium text-muted">
               Last 30 Days
             </span>
-            <span className="rounded-full bg-mint px-4 py-1.5 text-sm font-semibold text-[#065f46]">
+            <motion.span
+              key={`badge-${currentLevel}-${path[path.length - 1]?.id ?? "root"}`}
+              className="rounded-full bg-mint px-4 py-1.5 text-sm font-semibold text-[#065f46]"
+              initial={{ opacity: 0, scale: 0.92, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 24 }}
+            >
               {currentLevel === "cluster"
                 ? "Cluster"
                 : currentLevel === "namespace"
                   ? path[path.length - 1]?.name
                   : `${path[path.length - 2]?.name} — ${path[path.length - 1]?.name}`}
-            </span>
+            </motion.span>
           </div>
 
           <Breadcrumb items={breadcrumbItems} onNavigate={handleNavigate} />
@@ -104,19 +135,20 @@ export function CostExplorer() {
         )}
 
         {data && currentNodes.length > 0 && (
-          <motion.div
-            className="flex flex-col gap-6"
-            initial={{ opacity: 0 }}
-            animate={isInView ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <div className="flex flex-col gap-6">
             <CostBarChart
               nodes={currentNodes}
               level={currentLevel}
               onSelect={handleDrillDown}
+              isTransitioning={isTransitioning}
+              drillSource={drillSource}
             />
-            <MetricsTable nodes={currentNodes} level={currentLevel} />
-          </motion.div>
+            <MetricsTable
+              nodes={currentNodes}
+              level={currentLevel}
+              levelKey={levelKey}
+            />
+          </div>
         )}
       </motion.div>
     </section>

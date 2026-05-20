@@ -8,6 +8,7 @@ import { AnimatedCounter } from "./AnimatedCounter";
 interface MetricsTableProps {
   nodes: CostNode[];
   level: DrillLevel;
+  levelKey: string;
 }
 
 function EfficiencyBadge({ value }: { value: number }) {
@@ -25,21 +26,21 @@ function EfficiencyBadge({ value }: { value: number }) {
 }
 
 const rowVariants = {
-  hidden: { opacity: 0, x: -12 },
+  hidden: { opacity: 0, x: -16 },
   visible: (i: number) => ({
     opacity: 1,
     x: 0,
     transition: {
       type: "spring" as const,
-      stiffness: 260,
-      damping: 24,
-      delay: i * 0.06,
+      stiffness: 280,
+      damping: 26,
+      delay: 0.1 + i * 0.07,
     },
   }),
-  exit: { opacity: 0, x: 12 },
+  exit: { opacity: 0, x: 16, transition: { duration: 0.15 } },
 };
 
-export function MetricsTable({ nodes, level }: MetricsTableProps) {
+export function MetricsTable({ nodes, level, levelKey }: MetricsTableProps) {
   return (
     <div
       className="overflow-x-auto rounded-[var(--radius-xl)] border border-[var(--color-border-light)] bg-card"
@@ -68,14 +69,14 @@ export function MetricsTable({ nodes, level }: MetricsTableProps) {
 
         <AnimatePresence mode="wait">
           <motion.tbody
-            key={`table-${level}-${nodes.map((n) => n.id).join(",")}`}
+            key={levelKey}
             initial="hidden"
             animate="visible"
             exit="exit"
           >
             {nodes.map((node, i) => (
               <motion.tr
-                key={node.id}
+                key={`${levelKey}-${node.id}`}
                 custom={i}
                 variants={rowVariants}
                 className="border-b border-[var(--color-border-light)] last:border-b-0 transition-colors hover:bg-surface"
@@ -88,14 +89,14 @@ export function MetricsTable({ nodes, level }: MetricsTableProps) {
                     key={cat}
                     className="px-4 py-3 text-end font-mono text-muted whitespace-nowrap"
                   >
-                    <AnimatedCounter value={node.costs[cat]} duration={0.8} />
+                    <AnimatedCounter value={node.costs[cat]} duration={0.7} />
                   </td>
                 ))}
                 <td className="px-4 py-3 text-end">
                   <EfficiencyBadge value={node.efficiency} />
                 </td>
                 <td className="px-4 py-3 text-end font-mono font-bold text-foreground whitespace-nowrap">
-                  <AnimatedCounter value={node.total} duration={1} />
+                  <AnimatedCounter value={node.total} duration={0.9} />
                 </td>
               </motion.tr>
             ))}

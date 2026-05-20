@@ -22,14 +22,24 @@ Rather than pixel-copying the reference, I interpreted the concept as an interac
 
 ## Animation Approach
 
-- **Scroll-triggered entrance:** The section uses Framer Motion's `useInView` with a threshold offset to trigger a spring-based entrance animation
-- **Staggered bar reveal:** Bars enter with a staggered delay (`index * 0.08s`) using spring physics for natural easing
-- **Bar growth animation:** Each bar grows from `scaleY: 0` to `scaleY: 1` with `transformOrigin: bottom`, creating a "data materializing" effect
-- **Drill-down transitions:** `AnimatePresence` with `mode="wait"` ensures smooth exit/enter transitions between hierarchy levels
-- **Animated counters:** Dollar values count up from 0 using Framer Motion's `animate()` utility
-- **Breadcrumb morphing:** Navigation items enter/exit with spring-based x-axis transitions
-- **Hover feedback:** Interactive bars scale slightly with shadow on hover, with tap feedback
-- **Reduced motion:** `window.matchMedia('prefers-reduced-motion')` is respected — animations skip to final state when enabled. A global CSS rule also disables all CSS transitions/animations
+The **drill-down morph** is the centerpiece — what makes this submission feel alive:
+
+1. **Click capture:** When a user clicks a parent bar, its `DOMRect` and grid index are captured
+2. **Split origin:** The parent's height is divided into proportional slices per child (e.g., Namespace A = 19% of Cluster A height)
+3. **Initial transform:** Each new child bar mounts with calculated `x` (horizontal offset from parent's column to its target column), `y` (vertical stack offset inside parent), and `scaleY` (matching its slice fraction)
+4. **Spring travel:** All children spring-animate to `x: 0, y: 0, scaleY: 1` — effectively the parent bar appears to **split, fly out, and grow** into its children
+5. **Color flash:** The bar background pulses through a darker mint shade mid-transition for visual emphasis
+6. **Container blink:** The chart card's background pulses to mint-light briefly to signal the level change
+7. **Stagger-free children:** Drill-down children skip the entrance stagger to keep the morph synchronized
+
+Other animations:
+
+- **Scroll-triggered entrance:** `useInView` with margin offset triggers a spring entrance
+- **Staggered bar reveal:** Initial bars enter with a staggered delay (`index * 0.06s`)
+- **Animated counters:** Dollar values count up using Framer Motion's `animate()` utility, preserving previous value across drill-downs
+- **Breadcrumb morphing:** Navigation items enter/exit with spring-based x-axis transitions and `AnimatePresence`
+- **Hover feedback:** Interactive bars scale slightly on hover
+- **Reduced motion:** `window.matchMedia('prefers-reduced-motion')` is respected — animations skip to final state. A global CSS rule also disables all CSS transitions/animations
 
 ---
 

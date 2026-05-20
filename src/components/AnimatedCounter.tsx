@@ -18,29 +18,35 @@ export function AnimatedCounter({
 }: AnimatedCounterProps) {
   const ref = useRef<HTMLSpanElement>(null);
   const isInView = useInView(ref, { once: true });
-  const [displayed, setDisplayed] = useState(value);
-  const prevValue = useRef(value);
+  const [displayed, setDisplayed] = useState(0);
+  const fromRef = useRef(0);
 
   useEffect(() => {
     if (!isInView) return;
 
-    const prefersReduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
+    const prefersReduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     if (prefersReduced) {
       setDisplayed(value);
+      fromRef.current = value;
       return;
     }
 
-    const controls = animate(prevValue.current, value, {
+    const controls = animate(fromRef.current, value, {
       duration,
       ease: "easeOut",
       onUpdate: (v) => setDisplayed(Math.round(v)),
+      onComplete: () => {
+        fromRef.current = value;
+      },
     });
 
-    prevValue.current = value;
-    return () => controls.stop();
+    return () => {
+      controls.stop();
+      fromRef.current = value;
+    };
   }, [value, isInView, duration]);
 
   return (
