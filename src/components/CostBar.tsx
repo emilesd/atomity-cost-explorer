@@ -28,13 +28,36 @@ interface CostBarProps {
   };
 }
 
-// Travel transition for the namespace bars flying out of the split state.
-// Slow tween so the user can actually SEE each bar leave the stack and
-// drift to its own column — fast enough to feel intentional, slow enough
-// to read.
+// Two-beat entry: first the bar TRAVELS horizontally from the split
+// position to its own column (still at slice height), then it GROWS
+// vertically to its full natural height. Keeping the two phases separate
+// makes the motion legible — the user sees travel, then growth.
+const TRAVEL_DURATION_S = 2.5;
+const GROW_DURATION_S = 2.0;
+const TRAVEL_EASE = [0.4, 0, 0.2, 1] as [number, number, number, number];
+const GROW_EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
+
 const ENTER_TRANSITION = {
-  duration: 0.9,
-  ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+  x: { duration: TRAVEL_DURATION_S, ease: TRAVEL_EASE },
+  y: {
+    duration: GROW_DURATION_S,
+    delay: TRAVEL_DURATION_S,
+    ease: GROW_EASE,
+  },
+  scaleY: {
+    duration: GROW_DURATION_S,
+    delay: TRAVEL_DURATION_S,
+    ease: GROW_EASE,
+  },
+  opacity: { duration: 0.2 },
+};
+
+// Container-only transition (for the bar's outer wrapper). Mirrors the
+// total entry duration so the label settles into place at the same moment
+// the bar finishes growing.
+const ENTER_WRAPPER_TRANSITION = {
+  duration: TRAVEL_DURATION_S + GROW_DURATION_S,
+  ease: TRAVEL_EASE,
 };
 
 export function CostBar({
@@ -93,7 +116,7 @@ export function CostBar({
       animate={{ opacity: 1, y: 0 }}
       transition={
         enterFrom
-          ? ENTER_TRANSITION
+          ? ENTER_WRAPPER_TRANSITION
           : {
               type: "spring",
               stiffness: 260,
@@ -127,7 +150,8 @@ export function CostBar({
           }`}
         >
           {/* Solid bar — visible at idle. During pulse: zooms in then back.
-              During split: fades out as segments take over. */}
+              During split: fades out as segments take over. During grow
+              phase: a brief brightness bump so the user feels the growth. */}
           <motion.div
             className="absolute inset-0 rounded-[var(--radius-lg)] shadow-[0_2px_10px_color-mix(in_srgb,var(--color-accent-mint-dark)_24%,transparent)]"
             style={{
@@ -143,14 +167,30 @@ export function CostBar({
                   }
                 : isClickSource && phase === "split"
                   ? { scale: 1, opacity: 0 }
-                  : { scale: 1, opacity: 1, backgroundColor: "var(--color-accent-mint)" }
+                  : enterFrom && phase === "travel"
+                    ? {
+                        scale: 1,
+                        opacity: 1,
+                        backgroundColor: [
+                          "var(--color-accent-mint-dark)",
+                          "var(--color-accent-mint-dark)",
+                          "var(--color-accent-mint)",
+                        ],
+                      }
+                    : { scale: 1, opacity: 1, backgroundColor: "var(--color-accent-mint)" }
             }
             transition={
               isClickSource && phase === "pulse"
                 ? { duration: 0.34, ease: "easeOut" }
                 : isClickSource && phase === "split"
                   ? { duration: 0.28, ease: "easeOut" }
-                  : { duration: 0.45 }
+                  : enterFrom && phase === "travel"
+                    ? {
+                        duration: TRAVEL_DURATION_S + GROW_DURATION_S,
+                        times: [0, TRAVEL_DURATION_S / (TRAVEL_DURATION_S + GROW_DURATION_S), 1],
+                        ease: "easeOut",
+                      }
+                    : { duration: 0.45 }
             }
           />
 

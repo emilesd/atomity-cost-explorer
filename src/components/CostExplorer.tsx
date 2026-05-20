@@ -12,11 +12,13 @@ import { ErrorState } from "./ErrorState";
 
 const LEVELS: DrillLevel[] = ["cluster", "namespace", "pod"];
 
-// Drill-down phase timings (ms) — tuned so the user feels each beat:
-// pulse (click feedback) → split-with-gaps HOLD → slow visible travel.
+// Drill-down phase timings (ms) — tuned so the user feels every beat:
+// pulse → split-with-gaps HOLD → travel-to-column → grow-to-full-height.
+// Travel is intentionally slow so each bar's path is readable; the growth
+// at the end gives a satisfying "snap into place" moment.
 const PULSE_MS = 340; // zoom-in feedback after click
 const SPLIT_MS = 600; // fade out + segments appear + HOLD with gaps
-const TRAVEL_MS = 900; // segments fly to their namespace positions (visible)
+const TRAVEL_MS = 4500; // travel-x then grow-y (see CostBar TRAVEL/GROW split)
 
 export type DrillPhase = "idle" | "pulse" | "split" | "travel";
 
