@@ -130,6 +130,58 @@ export function CostBar({
         className="relative flex w-full items-end"
         style={{ height: "clamp(140px, 22vw, 220px)" }}
       >
+        {/* Landing burst — fires when a travelling bar arrives at its
+            column baseline (= start of grow phase). Rendered OUTSIDE
+            the bar button so it is not warped by the bar's scaleY
+            growth animation. Two layered effects:
+              1. Halo: radial mint glow expanding outward and fading
+              2. Splash: thin baseline streak scaling horizontally
+            Together they read as "thud + flash" — the bar has landed. */}
+        {enterFrom && phase === "travel" && (
+          <>
+            <motion.div
+              key="landing-halo"
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10"
+              style={{
+                height: "min(60%, 8rem)",
+                background:
+                  "radial-gradient(ellipse at center bottom, var(--color-accent-mint-dark) 0%, transparent 65%)",
+                transformOrigin: "center bottom",
+              }}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{
+                opacity: [0, 0.55, 0],
+                scale: [0.8, 1.25, 1.5],
+              }}
+              transition={{
+                duration: 0.7,
+                delay: TRAVEL_DURATION_S,
+                times: [0, 0.3, 1],
+                ease: "easeOut",
+              }}
+            />
+            <motion.div
+              key="landing-splash"
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1.5 rounded-full"
+              style={{
+                backgroundColor: "var(--color-accent-mint-dark)",
+                filter: "blur(2px)",
+                transformOrigin: "center",
+              }}
+              initial={{ opacity: 0, scaleX: 0.9 }}
+              animate={{
+                opacity: [0, 0.95, 0],
+                scaleX: [0.9, 1.6, 2.1],
+              }}
+              transition={{
+                duration: 0.55,
+                delay: TRAVEL_DURATION_S,
+                times: [0, 0.25, 1],
+                ease: "easeOut",
+              }}
+            />
+          </>
+        )}
         <motion.button
           ref={buttonRef}
           type="button"
@@ -172,10 +224,19 @@ export function CostBar({
                     ? {
                         scale: 1,
                         opacity: 1,
+                        // Travel = dark mint. Land moment = bright flash.
+                        // Grow = sustained mid mint. Settle = base mint.
                         backgroundColor: [
-                          "var(--color-accent-mint-dark)",
-                          "var(--color-accent-mint-dark)",
-                          "var(--color-accent-mint)",
+                          "var(--color-accent-mint-dark)", // travelling
+                          "var(--color-accent-mint-dark)", // still travelling
+                          "#bbf7d0",                        // burst at landing
+                          "var(--color-accent-mint)",      // settled
+                        ],
+                        filter: [
+                          "drop-shadow(0 0 0 transparent)",
+                          "drop-shadow(0 0 0 transparent)",
+                          "drop-shadow(0 0 18px var(--color-accent-mint-dark))",
+                          "drop-shadow(0 0 0 transparent)",
                         ],
                       }
                     : { scale: 1, opacity: 1, backgroundColor: "var(--color-accent-mint)" }
@@ -186,16 +247,18 @@ export function CostBar({
                 : isClickSource && phase === "split"
                   ? { duration: 0.28, ease: "easeOut" }
                   : enterFrom && phase === "travel"
-                    ? {
-                        duration: TRAVEL_DURATION_S + GROW_DURATION_S,
-                        times: [
-                          0,
-                          TRAVEL_DURATION_S /
-                            (TRAVEL_DURATION_S + GROW_DURATION_S),
-                          1,
-                        ],
-                        ease: "easeOut",
-                      }
+                    ? (() => {
+                        const total = TRAVEL_DURATION_S + GROW_DURATION_S;
+                        const landAt = TRAVEL_DURATION_S / total;
+                        // Spend a brief slice (5% of total) at the bright
+                        // burst color, then fade back over the rest of grow.
+                        const burstWidth = 0.05;
+                        return {
+                          duration: total,
+                          times: [0, landAt, landAt + burstWidth, 1],
+                          ease: "easeOut",
+                        };
+                      })()
                     : { duration: 0.45 }
             }
           />
