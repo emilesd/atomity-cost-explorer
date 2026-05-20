@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useInView } from "framer-motion";
 import { useClusterData } from "@/hooks/useClusterData";
 import type { CostNode, DrillLevel } from "@/types";
@@ -28,6 +28,7 @@ export function CostExplorer() {
   const [drillSource, setDrillSource] = useState<DrillSource | null>(null);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const sectionRef = useRef<HTMLElement>(null);
+  const chartAnchorRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(sectionRef, { once: true, margin: "-80px" });
 
   const currentLevel: DrillLevel = LEVELS[Math.min(path.length, 2)] ?? "pod";
@@ -45,6 +46,24 @@ export function CostExplorer() {
     if (path.length === 1) return "All Clusters";
     return path[path.length - 2].name;
   }, [path]);
+
+  // Keep the chart in view after a drill — important on small screens
+  // where the action otherwise scrolls offscreen. Skip on first render
+  // (path === []) and respect reduced-motion preference.
+  const prevPathDepth = useRef(path.length);
+  useEffect(() => {
+    const changed = prevPathDepth.current !== path.length;
+    prevPathDepth.current = path.length;
+    if (!changed || path.length === 0) return;
+    if (typeof window === "undefined") return;
+    const prefersReduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    chartAnchorRef.current?.scrollIntoView({
+      behavior: prefersReduced ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [path.length]);
 
   const clearTimers = useCallback(() => {
     timers.current.forEach((t) => clearTimeout(t));
@@ -122,6 +141,13 @@ export function CostExplorer() {
         transition={{ type: "spring", stiffness: 200, damping: 24 }}
         className="flex flex-col gap-8"
       >
+        {/* anchor used by scrollIntoView after drill-down — sits a few
+            pixels above the header so the back chip stays visible too */}
+        <div
+          ref={chartAnchorRef}
+          aria-hidden="true"
+          style={{ scrollMarginBlockStart: "1.5rem" }}
+        />
         <header className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <AnimatePresence initial={false} mode="popLayout">
