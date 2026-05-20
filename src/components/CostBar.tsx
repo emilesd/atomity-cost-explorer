@@ -76,14 +76,13 @@ export function CostBar({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const handleClick = () => {
-    if (!isInteractive) return;
-    const rect = buttonRef.current?.getBoundingClientRect();
-    // The bar's parent <div> is the fixed-height track (clamp(140px,22vw,220px)).
-    // We pass it up so the chart can compute child bar heights exactly,
-    // making the split→travel handoff pixel-perfect.
+    if (!isInteractive || !node.children?.length) return;
+    const el = buttonRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
     const trackHeightPx =
-      buttonRef.current?.parentElement?.getBoundingClientRect().height ?? 0;
-    if (rect) onSelect(node, rect, index, trackHeightPx);
+      el.parentElement?.getBoundingClientRect().height ?? 0;
+    onSelect(node, rect, index, trackHeightPx);
   };
 
   // Drill-down entry transform: place the new bar visually at the parent's
@@ -187,11 +186,13 @@ export function CostBar({
           type="button"
           onClick={handleClick}
           disabled={!isInteractive}
-          className="relative w-full focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2 disabled:cursor-default rounded-[var(--radius-lg)]"
+          className="relative w-full rounded-[var(--radius-lg)] focus-visible:outline-2 focus-visible:outline-mint-dark focus-visible:outline-offset-2"
           style={{
             height: `${heightPercent}%`,
             minHeight: "32px",
             transformOrigin: "bottom",
+            cursor: isInteractive ? "pointer" : "default",
+            pointerEvents: isInteractive ? "auto" : "none",
           }}
           initial={buttonInitial}
           animate={buttonAnimate}

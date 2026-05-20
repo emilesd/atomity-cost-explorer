@@ -70,9 +70,16 @@ export function CostExplorer() {
     timers.current = [];
   }, []);
 
+  // Ref-based guard prevents double-fires from rapid clicks — setState
+  // batching means phase might still read "idle" when a second click
+  // arrives in the same microtask.
+  const drillLock = useRef(false);
+
   const handleDrillDown = useCallback(
     (node: CostNode, rect: DOMRect, index: number, trackHeightPx: number) => {
       if (!node.children?.length) return;
+      if (drillLock.current) return;
+      drillLock.current = true;
       clearTimers();
 
       // Phase 1 — Pulse: bar zooms in briefly (click feedback)
@@ -92,11 +99,12 @@ export function CostExplorer() {
         }, PULSE_MS + SPLIT_MS)
       );
 
-      // Phase 4 — Idle
+      // Phase 4 — Idle: release the drill lock so clicks work again
       timers.current.push(
         setTimeout(() => {
           setPhase("idle");
           setDrillSource(null);
+          drillLock.current = false;
         }, PULSE_MS + SPLIT_MS + TRAVEL_MS)
       );
     },
@@ -106,10 +114,14 @@ export function CostExplorer() {
   const handleNavigate = useCallback(
     (index: number) => {
       clearTimers();
+      drillLock.current = false;
       setDrillSource(null);
       setPhase("travel");
       timers.current.push(
-        setTimeout(() => setPhase("idle"), TRAVEL_MS)
+        setTimeout(() => {
+          setPhase("idle");
+          drillLock.current = false;
+        }, TRAVEL_MS)
       );
       if (index === 0) {
         setPath([]);
